@@ -1,0 +1,6 @@
+{
+  "name": "Festify - Live Event Discovery & Ticket Booking in India",
+  "description": "Discover live concerts, comedy shows, music festivals, nightlife, and workshops across top Indian cities. Book tickets instantly with Festify.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
