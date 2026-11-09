@@ -4,7 +4,7 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import { TicketProvider } from './context/TicketContext.jsx';
 import { Navbar } from './components/Navbar.jsx';
 import { Footer } from './components/Footer.jsx';
-import { AuthModal } from './components/AuthModal.jsx';
+import AuthModal from './components/AuthModal.jsx';
 import { HomePage } from './pages/HomePage.jsx';
 import { ExplorePage } from './pages/ExplorePage.jsx';
 import { EventDetailPage } from './pages/EventDetailPage.jsx';

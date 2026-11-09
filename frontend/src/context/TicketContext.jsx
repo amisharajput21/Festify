@@ -1,5 +1,13 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { eventService } from '../services/api.js';
+
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback
+} from 'react';
+
+import { bookingService } from '../services/api.js';
 import { useAuth } from './AuthContext.jsx';
 
 const TicketContext = createContext(undefined);
@@ -7,15 +15,23 @@ const TicketContext = createContext(undefined);
 export const TicketProvider = ({ children }) => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const { user } = useAuth();
 
   const loadBookings = useCallback(async () => {
+    if (!user?.email) {
+      setBookings([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
+
     try {
-      const data = await eventService.getMyBookings(user?.email);
+      const data = await bookingService.getMyBookings(user.email);
       setBookings(data);
-    } catch (e) {
-      console.error('Failed to load tickets', e);
+    } catch (error) {
+      console.error('Failed to load tickets:', error);
     } finally {
       setLoading(false);
     }
@@ -26,23 +42,26 @@ export const TicketProvider = ({ children }) => {
   }, [loadBookings]);
 
   const bookTickets = async (req) => {
-    const booking = await eventService.createBooking(req);
-    setBookings((prev) => [booking, ...prev]);
+    const booking = await bookingService.createBooking(req);
+
+    await loadBookings();
+
     return booking;
   };
 
-  const cancelTicket = async (bookingId) => {
-    const updated = bookings.map((b) =>
-      b.bookingId === bookingId ? { ...b, status: 'CANCELLED' } : b
-    );
-    setBookings(updated);
-    try {
-      localStorage.setItem('festify_bookings_store', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
-    return true;
-  };
+ const cancelTicket = async (bookingId) => {
+  if (!user?.email) {
+    throw new Error('Please login first.');
+  }
+
+  const result = await bookingService.cancelBooking(
+    bookingId,
+    user.email
+  );
+
+  await loadBookings();
+  return result;
+};
 
   return (
     <TicketContext.Provider
@@ -51,7 +70,7 @@ export const TicketProvider = ({ children }) => {
         loading,
         bookTickets,
         cancelTicket,
-        refreshBookings: loadBookings,
+        refreshBookings: loadBookings
       }}
     >
       {children}
@@ -61,8 +80,10 @@ export const TicketProvider = ({ children }) => {
 
 export const useTickets = () => {
   const context = useContext(TicketContext);
+
   if (!context) {
     throw new Error('useTickets must be used within a TicketProvider');
   }
+
   return context;
 };

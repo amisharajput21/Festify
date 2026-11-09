@@ -1,70 +1,51 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
 
-const STORAGE_USER_KEY = 'festify_current_user';
-
-const DEMO_USER = {
-  id: 'usr-001',
-  name: 'Aarav Sharma',
-  email: 'aarav.sharma@example.com',
-  phone: '+91 98765 43210',
-  city: 'Mumbai',
-  role: 'ROLE_USER'
-};
+import React, { createContext, useContext, useState } from 'react';
+import { authService } from '../services/api.js';
 
 const AuthContext = createContext(undefined);
 
+const getSavedUser = () => {
+  try {
+    const savedUser = localStorage.getItem('festify_user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  } catch {
+    localStorage.removeItem('festify_user');
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(getSavedUser);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState('login');
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_USER_KEY);
-      if (stored) {
-        setUser(JSON.parse(stored));
-      } else {
-        setUser(DEMO_USER);
-        localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(DEMO_USER));
-      }
-    } catch {
-      setUser(DEMO_USER);
-    }
-  }, []);
-
-  const login = async (email) => {
-    const loggedUser = {
-      id: `usr-${Date.now()}`,
-      name: email.split('@')[0].replace('.', ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
-      email,
-      phone: '+91 98765 43210',
-      city: 'Mumbai',
-      role: 'ROLE_USER'
-    };
+  const login = async (email, password) => {
+    const loggedUser = await authService.login({ email, password });
     setUser(loggedUser);
-    localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(loggedUser));
+    localStorage.setItem('festify_user', JSON.stringify(loggedUser));
     setIsAuthModalOpen(false);
-    return true;
+    return loggedUser;
   };
 
-  const register = async (name, email, phone, city) => {
-    const newUser = {
-      id: `usr-${Date.now()}`,
+  const register = async (name, email, phone, city, password) => {
+    const newUser = await authService.signup({
       name,
       email,
       phone,
       city,
-      role: 'ROLE_USER'
-    };
+      password
+    });
+
     setUser(newUser);
-    localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(newUser));
+    localStorage.setItem('festify_user', JSON.stringify(newUser));
     setIsAuthModalOpen(false);
-    return true;
+    return newUser;
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem(STORAGE_USER_KEY);
+    localStorage.removeItem('festify_user');
+    setIsAuthModalOpen(false);
   };
 
   const openAuthModal = (tab = 'login') => {
@@ -72,9 +53,7 @@ export const AuthProvider = ({ children }) => {
     setIsAuthModalOpen(true);
   };
 
-  const closeAuthModal = () => {
-    setIsAuthModalOpen(false);
-  };
+  const closeAuthModal = () => setIsAuthModalOpen(false);
 
   return (
     <AuthContext.Provider
@@ -97,8 +76,10 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
+
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+
   return context;
 };
