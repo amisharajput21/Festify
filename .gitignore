@@ -31,3 +31,7 @@ Thumbs.db
 
 # Local backup
 frontend-backup/
+# Temporary local helper files
+backend/HashPassword.java
+backend/HashPassword.class
+backend/classpath.txt

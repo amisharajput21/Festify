@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   X,
   Mail,
@@ -21,6 +22,8 @@ const AuthModal = () => {
     register
   } = useAuth();
 
+  const navigate = useNavigate();
+
   const [tab, setTab] = useState(authModalTab || 'login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -39,53 +42,57 @@ const AuthModal = () => {
 
   if (!isAuthModalOpen) return null;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+ 
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (!email.trim() || !password) {
-      setError('Please enter your email and password.');
-      return;
-    }
+  setError('');
+  setLoading(true);
 
-    if (tab === 'register') {
-      if (!name.trim()) {
-        setError('Please enter your full name.');
-        return;
+  try {
+    if (tab === 'login') {
+      if (!email.trim() || !password) {
+        throw new Error('Please enter your email and password.');
+      }
+
+      const loggedInUser = await login(email.trim(), password);
+
+      console.log('LOGIN USER:', loggedInUser);
+      console.log('LOGIN ROLE:', loggedInUser?.role);
+
+      if (loggedInUser?.role === 'ROLE_ADMIN') {
+        navigate('/admin', { replace: true });
+      } else if (loggedInUser?.role === 'ROLE_ORGANIZER') {
+        navigate('/organizer', { replace: true });
+      } else {
+        navigate('/explore', { replace: true });
+      }
+    } else {
+      if (!name.trim() || !email.trim() || !phone.trim() || !password) {
+        throw new Error('Please fill in all details.');
       }
 
       if (password.length < 8) {
-        setError('Password must contain at least 8 characters.');
-        return;
-      }
-    }
-
-    try {
-      setLoading(true);
-
-      if (tab === 'login') {
-        await login(email.trim(), password);
-      } else {
-        await register(
-          name.trim(),
-          email.trim(),
-          phone.trim(),
-          city,
-          password
-        );
+        throw new Error('Password must be at least 8 characters.');
       }
 
-      closeAuthModal();
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-        err.message ||
-        'Something went wrong. Please try again.'
+      await register(
+        name.trim(),
+        email.trim(),
+        phone.trim(),
+        city,
+        password
       );
-    } finally {
-      setLoading(false);
+
+      navigate('/explore', { replace: true });
     }
-  };
+  } catch (err) {
+    setError(err.message || 'Authentication failed. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const cities = Array.isArray(POPULAR_CITIES)
     ? POPULAR_CITIES.map((item) =>

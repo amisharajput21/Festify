@@ -2,6 +2,7 @@ package com.festify.backend.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "events")
@@ -20,6 +21,10 @@ public class Event {
     private Double startingPrice;
     private String imageUrl;
     private boolean featured;
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "organizer_id")
+    private User organizer;
 
     public Event() {
     }
@@ -102,5 +107,12 @@ public class Event {
 
     public void setFeatured(boolean featured) {
         this.featured = featured;
+    }
+    public User getOrganizer() {
+        return organizer;
+    }
+
+    public void setOrganizer(User organizer) {
+        this.organizer = organizer;
     }
 }

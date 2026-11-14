@@ -1,6 +1,17 @@
 
 const API_BASE_URL = 'http://localhost:8080/api/v1';
 
+// Automatically attach JWT token to authenticated requests.
+const getAuthHeaders = (extraHeaders = {}) => {
+  const token = localStorage.getItem('festify_token');
+
+  return {
+    Accept: 'application/json',
+    ...extraHeaders,
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+};
+
 // Convert backend event data into frontend format
 export const formatBackendEvent = (event) => ({
   ...event,
@@ -107,41 +118,39 @@ export const eventService = {
   },
 
   async getTicketCategories(eventId) {
-  try {
-    const response = await fetch(
-      `${API_BASE_URL}/events/${eventId}/ticket-categories`
-    );
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/events/${eventId}/ticket-categories`
+      );
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch ticket categories');
+      if (!response.ok) {
+        throw new Error('Failed to fetch ticket categories');
+      }
+
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Ticket Categories API error:', error);
+      throw error;
     }
-
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Ticket Categories API error:', error);
-    throw error;
-  }
-},
+  },
 
   async getMyBookings(email) {
     return bookingService.getMyBookings(email);
   }
 };
 
-// Booking APIs - connected to Spring Boot backend
+// Booking APIs
 export const bookingService = {
-  // Create booking
   async createBooking(bookingData) {
     let response;
 
     try {
       response = await fetch(`${API_BASE_URL}/bookings`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json'
-        },
+        headers: getAuthHeaders({
+          'Content-Type': 'application/json'
+        }),
         body: JSON.stringify(bookingData)
       });
     } catch {
@@ -174,7 +183,6 @@ export const bookingService = {
     return data;
   },
 
-  // Get logged-in user's bookings
   async getMyBookings(email) {
     if (!email) {
       return [];
@@ -182,7 +190,10 @@ export const bookingService = {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}/bookings/my?email=${encodeURIComponent(email)}`
+        `${API_BASE_URL}/bookings/my?email=${encodeURIComponent(email)}`,
+        {
+          headers: getAuthHeaders()
+        }
       );
 
       if (!response.ok) {
@@ -200,7 +211,6 @@ export const bookingService = {
     }
   },
 
-  // Cancel pending booking
   async cancelBooking(bookingId, email) {
     if (!bookingId || !email) {
       throw new Error('Booking ID aur user email required hain.');
@@ -213,9 +223,7 @@ export const bookingService = {
         `${API_BASE_URL}/bookings/${encodeURIComponent(bookingId)}/cancel?email=${encodeURIComponent(email)}`,
         {
           method: 'PUT',
-          headers: {
-            Accept: 'application/json'
-          }
+          headers: getAuthHeaders()
         }
       );
     } catch {
@@ -245,12 +253,176 @@ export const bookingService = {
   }
 };
 
-// Default export
+
+// Admin Event Management APIs
+export const adminEventService = {
+  async getAllEvents() {
+    let response;
+
+    try {
+      response = await fetch(`${API_BASE_URL}/events`, {
+        headers: getAuthHeaders()
+      });
+    } catch {
+      throw new Error('Backend se events fetch nahi ho pa rahe.');
+    }
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        data?.message || `Failed to fetch events. HTTP ${response.status}`
+      );
+    }
+
+    return Array.isArray(data)
+      ? data.map(formatBackendEvent)
+      : [];
+  }
+};
+
+
+// Admin Organizer Application APIs
+export const organizerApplicationService = {
+  async getPendingApplications() {
+    const response = await fetch(
+      `${API_BASE_URL}/organizer-applications/admin/pending`,
+      {
+        headers: getAuthHeaders()
+      }
+    );
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        data?.message || `Failed to fetch applications. HTTP ${response.status}`
+      );
+    }
+
+    return Array.isArray(data) ? data : [];
+  },
+
+  async submitApplication(reason) {
+  const response = await fetch(
+    `${API_BASE_URL}/organizer-applications`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders({
+        'Content-Type': 'application/json'
+      }),
+      body: JSON.stringify({ reason })
+    }
+  );
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message || `Application submission failed. HTTP ${response.status}`
+    );
+  }
+
+  return data;
+},
+
+  async reviewApplication(applicationId, decision, adminComment = '') {
+    const response = await fetch(
+      `${API_BASE_URL}/organizer-applications/admin/${applicationId}/review`,
+      {
+        method: 'PUT',
+        headers: getAuthHeaders({
+          'Content-Type': 'application/json'
+        }),
+        body: JSON.stringify({
+          decision,
+          adminComment
+        })
+      }
+    );
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        data?.message || `Application review failed. HTTP ${response.status}`
+      );
+    }
+
+    return data;
+  }
+};
+
+
+// Organizer Event APIs
+export const organizerEventService = {
+  async getMyEvents() {
+    const response = await fetch(`${API_BASE_URL}/organizer/events`, {
+      headers: getAuthHeaders()
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch organizer events. HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return Array.isArray(data)
+      ? data.map(formatBackendEvent)
+      : [];
+  },
+
+  async createEvent(eventData) {
+    const response = await fetch(`${API_BASE_URL}/organizer/events`, {
+      method: 'POST',
+      headers: getAuthHeaders({
+        'Content-Type': 'application/json'
+      }),
+      body: JSON.stringify(eventData)
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        data?.message || `Event creation failed. HTTP ${response.status}`
+      );
+    }
+
+    return formatBackendEvent(data);
+  },
+
+  async updateEvent(eventId, eventData) {
+    const response = await fetch(
+      `${API_BASE_URL}/organizer/events/${eventId}`,
+      {
+        method: 'PUT',
+        headers: getAuthHeaders({
+          'Content-Type': 'application/json'
+        }),
+        body: JSON.stringify(eventData)
+      }
+    );
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        data?.message || `Event update failed. HTTP ${response.status}`
+      );
+    }
+
+    return formatBackendEvent(data);
+  }
+};
+
 const api = {
   authService,
   eventService,
-  bookingService
+  bookingService,
+  organizerEventService,
+  organizerApplicationService,
+  adminEventService
 };
 
 export default api;
-

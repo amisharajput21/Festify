@@ -4,31 +4,56 @@ import { authService } from '../services/api.js';
 
 const AuthContext = createContext(undefined);
 
-const getSavedUser = () => {
+const getSavedAuth = () => {
   try {
     const savedUser = localStorage.getItem('festify_user');
-    return savedUser ? JSON.parse(savedUser) : null;
+    const savedToken = localStorage.getItem('festify_token');
+
+    if (!savedUser || !savedToken) {
+      return { user: null, token: null };
+    }
+
+    return {
+      user: JSON.parse(savedUser),
+      token: savedToken
+    };
   } catch {
     localStorage.removeItem('festify_user');
-    return null;
+    localStorage.removeItem('festify_token');
+    return { user: null, token: null };
   }
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(getSavedUser);
+  const [savedAuth] = useState(getSavedAuth);
+  const [user, setUser] = useState(savedAuth.user);
+  const [token, setToken] = useState(savedAuth.token);
+
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState('login');
 
+  const saveAuth = (authData) => {
+    setUser(authData.user);
+    setToken(authData.token);
+
+    localStorage.setItem('festify_user', JSON.stringify(authData.user));
+    localStorage.setItem('festify_token', authData.token);
+  };
+
   const login = async (email, password) => {
-    const loggedUser = await authService.login({ email, password });
-    setUser(loggedUser);
-    localStorage.setItem('festify_user', JSON.stringify(loggedUser));
+    const response = await authService.login({ email, password });
+
+    saveAuth({
+      user: response.user,
+      token: response.token
+    });
+
     setIsAuthModalOpen(false);
-    return loggedUser;
+    return response.user;
   };
 
   const register = async (name, email, phone, city, password) => {
-    const newUser = await authService.signup({
+    await authService.signup({
       name,
       email,
       phone,
@@ -36,15 +61,25 @@ export const AuthProvider = ({ children }) => {
       password
     });
 
-    setUser(newUser);
-    localStorage.setItem('festify_user', JSON.stringify(newUser));
+    // Signup ke baad automatically login karke JWT token lena.
+    const response = await authService.login({ email, password });
+
+    saveAuth({
+      user: response.user,
+      token: response.token
+    });
+
     setIsAuthModalOpen(false);
-    return newUser;
+    return response.user;
   };
 
   const logout = () => {
     setUser(null);
+    setToken(null);
+
     localStorage.removeItem('festify_user');
+    localStorage.removeItem('festify_token');
+
     setIsAuthModalOpen(false);
   };
 
@@ -59,7 +94,8 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user,
-        isAuthenticated: !!user,
+        token,
+        isAuthenticated: !!user && !!token,
         login,
         register,
         logout,

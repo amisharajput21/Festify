@@ -42,7 +42,8 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponse createBooking(BookingRequest request) {
+   public BookingResponse createBooking(
+        BookingRequest request, String authenticatedEmail) {
 
         Event event = eventRepository.findById(request.getEventId())
                 .orElseThrow(() -> new ResponseStatusException(
@@ -69,10 +70,10 @@ public class BookingService {
                     HttpStatus.CONFLICT, "Not enough tickets available");
         }
 
-        User user = userRepository.findByEmail(
-                request.getAttendeeEmail().trim())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Please create an account first"));
+       User user = userRepository.findByEmail(
+        authenticatedEmail.trim().toLowerCase())
+        .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Authenticated user not found"));
 
         BigDecimal unitPrice = category.getPrice();
 
@@ -93,7 +94,7 @@ public class BookingService {
         booking.setTicketCategory(category);
         booking.setQuantity(request.getQuantity());
         booking.setAttendeeName(request.getAttendeeName().trim());
-        booking.setAttendeeEmail(request.getAttendeeEmail().trim());
+        booking.setAttendeeEmail(user.getEmail());
         booking.setAttendeePhone(request.getAttendeePhone());
         booking.setPaymentMethod(request.getPaymentMethod());
         booking.setSubtotal(subtotal);
@@ -121,11 +122,15 @@ public class BookingService {
                     HttpStatus.BAD_REQUEST, "Email is required");
         }
 
-        return bookingRepository
-                .findByAttendeeEmailIgnoreCaseOrderByCreatedAtDesc(email.trim())
-                .stream()
-                .map(BookingResponse::new)
-                .toList();
+        User user = userRepository.findByEmail(email.trim().toLowerCase())
+        .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "User not found"));
+
+return bookingRepository
+        .findByUserIdOrderByCreatedAtDesc(user.getId())
+        .stream()
+        .map(BookingResponse::new)
+        .toList();
     }
 
     
@@ -141,7 +146,8 @@ public class BookingService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Booking not found"));
 
-        if (!booking.getAttendeeEmail().equalsIgnoreCase(email.trim())) {
+        if (booking.getUser() == null
+        || !booking.getUser().getEmail().equalsIgnoreCase(email.trim())) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN, "You cannot cancel this booking");
         }

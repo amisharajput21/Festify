@@ -8,6 +8,8 @@ import com.festify.backend.service.BookingService;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,23 +32,26 @@ public class BookingController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public BookingResponse createBooking(
-            @Valid @RequestBody BookingRequest request) {
+            @Valid @RequestBody BookingRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
 
-        return bookingService.createBooking(request);
+        return bookingService.createBooking(
+                request, jwt.getSubject());
     }
 
     @GetMapping("/my")
     public List<BookingResponse> getMyBookings(
-            @RequestParam String email) {
+            @AuthenticationPrincipal Jwt jwt) {
 
-        return bookingService.getMyBookings(email);
+        return bookingService.getMyBookings(jwt.getSubject());
     }
 
-        @PutMapping("/{bookingId}/cancel")
+    @PutMapping("/{bookingId}/cancel")
     public BookingResponse cancelBooking(
             @PathVariable String bookingId,
-            @RequestParam String email) {
+            @AuthenticationPrincipal Jwt jwt) {
 
-        return bookingService.cancelBooking(bookingId, email);
+        return bookingService.cancelBooking(
+                bookingId, jwt.getSubject());
     }
 }

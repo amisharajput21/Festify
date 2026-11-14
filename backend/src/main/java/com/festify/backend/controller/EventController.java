@@ -2,7 +2,6 @@
 package com.festify.backend.controller;
 
 import com.festify.backend.entity.Event;
-import com.festify.backend.entity.TicketCategory;
 import com.festify.backend.repository.EventRepository;
 import com.festify.backend.repository.TicketCategoryRepository;
 
@@ -43,7 +42,6 @@ public class EventController {
     @GetMapping("/{eventId}/ticket-categories")
     public List<TicketCategoryResponse> getTicketCategories(
             @PathVariable Long eventId) {
-
         return ticketCategoryRepository.findByEventId(eventId)
                 .stream()
                 .map(category -> new TicketCategoryResponse(

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
@@ -31,46 +30,59 @@ export const AuthPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    setError('');
-    setLoading(true);
+  setError('');
+  setLoading(true);
 
-    try {
-      if (tab === 'login') {
-        if (!email.trim() || !password) {
-          throw new Error('Please enter your email and password.');
-        }
-
-        await login(email.trim(), password);
-
-      } else {
-        if (!name.trim() || !email.trim() || !phone.trim() || !password) {
-          throw new Error('Please fill in all details.');
-        }
-
-        if (password.length < 8) {
-          throw new Error('Password must be at least 8 characters.');
-        }
-
-        await register(
-          name.trim(),
-          email.trim(),
-          phone.trim(),
-          city,
-          password
-        );
+  try {
+    if (tab === 'login') {
+      if (!email.trim() || !password) {
+        throw new Error('Please enter your email and password.');
       }
 
-      navigate('/explore');
+      const loggedInUser = await login(email.trim(), password);
 
-    } catch (err) {
-      setError(err.message || 'Authentication failed. Please try again.');
-    } finally {
-      setLoading(false);
+      console.log('LOGIN USER:', loggedInUser);
+      console.log('LOGIN ROLE:', loggedInUser?.role);
+
+      if (loggedInUser?.role === 'ROLE_ADMIN') {
+        navigate('/admin', { replace: true });
+      } else if (loggedInUser?.role === 'ROLE_ORGANIZER') {
+        navigate('/organizer', { replace: true });
+      } else {
+        navigate('/explore', { replace: true });
+      }
+
+    } else {
+      if (!name.trim() || !email.trim() || !phone.trim() || !password) {
+        throw new Error('Please fill in all details.');
+      }
+
+      if (password.length < 8) {
+        throw new Error('Password must be at least 8 characters.');
+      }
+
+      await register(
+        name.trim(),
+        email.trim(),
+        phone.trim(),
+        city,
+        password
+      );
+
+      navigate('/explore', { replace: true });
     }
-  };
+
+  } catch (err) {
+    setError(err.message || 'Authentication failed. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
