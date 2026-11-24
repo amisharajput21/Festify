@@ -1,6 +1,8 @@
+
 package com.festify.backend.controller;
 
 import com.festify.backend.entity.Event;
+import com.festify.backend.entity.EventStatus;
 import com.festify.backend.entity.TicketCategory;
 import com.festify.backend.entity.User;
 import com.festify.backend.repository.EventRepository;
@@ -81,6 +83,9 @@ public class OrganizerEventController {
         copyEventDetails(request, event);
         event.setOrganizer(organizer);
 
+        // Every organizer-created event must wait for admin approval
+        event.setStatus(EventStatus.PENDING);
+
         Event savedEvent = eventRepository.save(event);
 
         TicketCategory category = new TicketCategory();
@@ -111,6 +116,7 @@ public class OrganizerEventController {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Your event not found"));
 
+        // Update only event details; approval status is not copied
         copyEventDetails(request, event);
 
         return eventRepository.save(event);

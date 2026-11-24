@@ -1,3 +1,4 @@
+
 package com.festify.backend.entity;
 
 import jakarta.persistence.*;
@@ -21,6 +22,11 @@ public class Event {
     private Double startingPrice;
     private String imageUrl;
     private boolean featured;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private EventStatus status = EventStatus.PENDING;
+
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "organizer_id")
@@ -108,6 +114,15 @@ public class Event {
     public void setFeatured(boolean featured) {
         this.featured = featured;
     }
+
+    public EventStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(EventStatus status) {
+        this.status = status;
+    }
+
     public User getOrganizer() {
         return organizer;
     }

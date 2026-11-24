@@ -253,9 +253,9 @@ export const bookingService = {
   }
 };
 
-
 // Admin Event Management APIs
 export const adminEventService = {
+  // Fetch all public/approved events
   async getAllEvents() {
     let response;
 
@@ -278,9 +278,91 @@ export const adminEventService = {
     return Array.isArray(data)
       ? data.map(formatBackendEvent)
       : [];
+  },
+
+  // Fetch pending events awaiting admin approval
+  async getPendingEvents() {
+    let response;
+
+    try {
+      response = await fetch(`${API_BASE_URL}/admin/events/pending`, {
+        headers: getAuthHeaders()
+      });
+    } catch {
+      throw new Error('Pending events fetch nahi ho pa rahe.');
+    }
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        data?.message || `Failed to fetch pending events. HTTP ${response.status}`
+      );
+    }
+
+    return Array.isArray(data)
+      ? data.map(formatBackendEvent)
+      : [];
+  },
+
+  // Approve a pending event
+  async approveEvent(eventId) {
+    let response;
+
+    try {
+      response = await fetch(
+        `${API_BASE_URL}/admin/events/${eventId}/approve`,
+        {
+          method: 'PUT',
+          headers: getAuthHeaders()
+        }
+      );
+    } catch {
+      throw new Error(
+        'Event approve karte waqt backend se connection fail hua.'
+      );
+    }
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        data?.message || `Event approval failed. HTTP ${response.status}`
+      );
+    }
+
+    return data ? formatBackendEvent(data) : null;
+  },
+
+  // Reject a pending event
+  async rejectEvent(eventId) {
+    let response;
+
+    try {
+      response = await fetch(
+        `${API_BASE_URL}/admin/events/${eventId}/reject`,
+        {
+          method: 'PUT',
+          headers: getAuthHeaders()
+        }
+      );
+    } catch {
+      throw new Error(
+        'Event reject karte waqt backend se connection fail hua.'
+      );
+    }
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        data?.message || `Event rejection failed. HTTP ${response.status}`
+      );
+    }
+
+    return data ? formatBackendEvent(data) : null;
   }
 };
-
 
 // Admin Organizer Application APIs
 export const organizerApplicationService = {
@@ -304,27 +386,27 @@ export const organizerApplicationService = {
   },
 
   async submitApplication(reason) {
-  const response = await fetch(
-    `${API_BASE_URL}/organizer-applications`,
-    {
-      method: 'POST',
-      headers: getAuthHeaders({
-        'Content-Type': 'application/json'
-      }),
-      body: JSON.stringify({ reason })
-    }
-  );
-
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    throw new Error(
-      data?.message || `Application submission failed. HTTP ${response.status}`
+    const response = await fetch(
+      `${API_BASE_URL}/organizer-applications`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders({
+          'Content-Type': 'application/json'
+        }),
+        body: JSON.stringify({ reason })
+      }
     );
-  }
 
-  return data;
-},
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        data?.message || `Application submission failed. HTTP ${response.status}`
+      );
+    }
+
+    return data;
+  },
 
   async reviewApplication(applicationId, decision, adminComment = '') {
     const response = await fetch(
@@ -353,7 +435,6 @@ export const organizerApplicationService = {
   }
 };
 
-
 // Organizer Event APIs
 export const organizerEventService = {
   async getMyEvents() {
@@ -362,7 +443,9 @@ export const organizerEventService = {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch organizer events. HTTP ${response.status}`);
+      throw new Error(
+        `Failed to fetch organizer events. HTTP ${response.status}`
+      );
     }
 
     const data = await response.json();
@@ -416,6 +499,7 @@ export const organizerEventService = {
   }
 };
 
+// Export all API services
 const api = {
   authService,
   eventService,
