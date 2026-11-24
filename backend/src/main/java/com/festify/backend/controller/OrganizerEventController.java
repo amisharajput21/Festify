@@ -1,9 +1,10 @@
-
 package com.festify.backend.controller;
 
 import com.festify.backend.entity.Event;
+import com.festify.backend.entity.TicketCategory;
 import com.festify.backend.entity.User;
 import com.festify.backend.repository.EventRepository;
+import com.festify.backend.repository.TicketCategoryRepository;
 import com.festify.backend.repository.UserRepository;
 
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -27,12 +29,16 @@ import java.util.List;
 public class OrganizerEventController {
 
     private final EventRepository eventRepository;
+    private final TicketCategoryRepository ticketCategoryRepository;
     private final UserRepository userRepository;
 
     public OrganizerEventController(
             EventRepository eventRepository,
+            TicketCategoryRepository ticketCategoryRepository,
             UserRepository userRepository) {
+
         this.eventRepository = eventRepository;
+        this.ticketCategoryRepository = ticketCategoryRepository;
         this.userRepository = userRepository;
     }
 
@@ -56,6 +62,7 @@ public class OrganizerEventController {
     }
 
     @PostMapping
+    @Transactional
     @ResponseStatus(HttpStatus.CREATED)
     public Event createEvent(
             @RequestBody Event request,
@@ -63,11 +70,31 @@ public class OrganizerEventController {
 
         User organizer = getOrganizer(jwt);
 
+        if (request.getStartingPrice() == null
+                || request.getStartingPrice() < 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Valid starting price is required");
+        }
+
         Event event = new Event();
         copyEventDetails(request, event);
         event.setOrganizer(organizer);
 
-        return eventRepository.save(event);
+        Event savedEvent = eventRepository.save(event);
+
+        TicketCategory category = new TicketCategory();
+        category.setEvent(savedEvent);
+        category.setName("General Admission");
+        category.setDescription(
+                "Standard entry ticket for " + savedEvent.getTitle());
+        category.setPrice(BigDecimal.valueOf(savedEvent.getStartingPrice()));
+        category.setTotalSeats(100);
+        category.setAvailableSeats(100);
+
+        ticketCategoryRepository.save(category);
+
+        return savedEvent;
     }
 
     @PutMapping("/{id}")
